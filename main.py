@@ -4,6 +4,7 @@ from google.genai import types
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -15,6 +16,14 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 app = FastAPI(title="API Sindico Virtual - EV ChargeOps")
+# Libera o CORS para o nosso Frontend poder conversar com a API
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Em producao, colocariamos o dominio real aqui
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class MensagemUsuario(BaseModel):
     texto: str
@@ -37,7 +46,7 @@ def obter_resposta_sindico(mensagem: str) -> str:
     try:
         # Nova estrutura de chamada do modelo
         response = client.models.generate_content(
-            model='gemini-2.0-flash',
+            model='gemini-2.5-flash',
             contents=mensagem,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,

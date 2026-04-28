@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV ChargeOps - Síndico Virtual</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 0; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 450px; background: white; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 80vh; overflow: hidden; }
+        .chat-header { background: #0056b3; color: white; padding: 15px 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #e5ddd5; }
+        .message { max-width: 80%; padding: 10px 15px; border-radius: 8px; line-height: 1.4; font-size: 0.95rem; }
+        .bot-message { background: white; color: #333; align-self: flex-start; border-bottom-left-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .user-message { background: #dcf8c6; color: #333; align-self: flex-end; border-bottom-right-radius: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .chat-input { display: flex; padding: 15px; background: #f0f0f0; }
+        .chat-input input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; font-size: 1rem; }
+        .chat-input button { background: #0056b3; color: white; border: none; padding: 10px 20px; margin-left: 10px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .chat-input button:hover { background: #004494; }
+        .loading { font-size: 0.8rem; color: #666; align-self: center; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        Síndico Virtual GoodWe
+    </div>
+    <div class="chat-messages" id="chatMessages">
+        <div class="message bot-message">
+            Olá! Sou o Síndico Virtual ChargeOps. Como posso te ajudar com a infraestrutura de carregamento do condomínio hoje?
+        </div>
+    </div>
+    <div class="loading" id="loadingIndicator">O Síndico está digitando...</div>
+    <div class="chat-input">
+        <input type="text" id="userInput" placeholder="Digite sua dúvida aqui..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">Enviar</button>
+    </div>
+</div>
+
+<script>
+    async function sendMessage() {
+        const inputField = document.getElementById('userInput');
+        const messageText = inputField.value.trim();
+        if (!messageText) return;
+
+        addMessageToChat(messageText, 'user-message');
+        inputField.value = '';
+        
+        const loading = document.getElementById('loadingIndicator');
+        loading.style.display = 'block';
+
+        try {
+            const response = await fetch('http://127.0.0.1:8000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto: messageText })
+            });
+            
+            const data = await response.json();
+            loading.style.display = 'none';
+            
+            if (response.ok) {
+                addMessageToChat(data.resposta_ia, 'bot-message');
+            } else {
+                addMessageToChat('Erro: Não foi possível processar a resposta.', 'bot-message');
+            }
+        } catch (error) {
+            loading.style.display = 'none';
+            addMessageToChat('Erro de conexão com o servidor Python.', 'bot-message');
+        }
+    }
+
+    function addMessageToChat(text, className) {
+        const chatBox = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${className}`;
+        // Transforma quebras de linha da IA em <br> no HTML
+        messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+</script>
+
+</body>
+</html>
