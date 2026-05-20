@@ -44,7 +44,7 @@ Para testar a comunicação entre o Frontend visual e o Backend FastAPI alimenta
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/Dustyluc123/Prompt-and-Artificial-Intelligence-Sprint-1.git
+   git clone https://github.com/Dustyluc123/Prompt-and-Artificial-Intelligence-Sprint.git
    cd Prompt-and-Artificial-Intelligence-Sprint-1
    python -m venv venv
 2. **Crie e ative o ambiente virtual:**
