@@ -19,11 +19,11 @@
 ---
 
 ## O Problema (EV Challenge 2026)
-No contexto do EV Challenge, a adoção de veículos elétricos esbarra em um obstáculo de usabilidade e suporte. Proprietários de carregadores — sejam eles **Síndicos (EV ChargeOps)** **Operadores Comerciais (ChargeGrid)** —, além dos próprios usuários finais, frequentemente não compreendem o funcionamento técnico, o significado dos alertas (LEDs) e os parâmetros da linha de equipamentos. A ausência de um suporte técnico imediato e integrado aos manuais gera sobrecarga de chamados, uso ineficiente da rede e frustração na orquestração da energia.
+No contexto do EV Challenge, a adoção de veículos elétricos esbarra em um obstáculo. Proprietários de carregadores — sejam eles **Operadores Comerciais (ChargeGrid)**, além dos próprios usuários finais, frequentemente não compreendem o funcionamento técnico, o significado dos alertas (LEDs) e os parâmetros da linha de equipamentos.
 
 ##  A Solução e a Persona
 Desenvolvemos o **Assistente Técnico ChargeOps**. Trata-se de um chatbot operacional especialista no hardware oficial do desafio: a **Série HCA G2 da GoodWe**.
-* **Personas Atendidas:** Gestores de infraestrutura (Síndicos/Operadores) que precisam entender os parâmetros do equipamento para gerenciar a carga, e Usuários Finais que precisam de troubleshooting rápido (ex: o que fazer se o cabo travar).
+* **Personas Atendidas:** Gestores de infraestrutura (Operadores) que precisam entender os parâmetros do equipamento para gerenciar a carga, e Usuários Finais que precisam de troubleshooting rápido (ex: o que fazer se o cabo travar).
 * **Escopo:** O chatbot atua como a primeira linha de suporte técnico, consumindo os manuais oficiais da GoodWe para sanar dúvidas operacionais, limites de potência (orquestração) e falhas, evitando acionamentos técnicos desnecessários.
 * **Inteligência Emocional:** A IA utiliza a técnica de *Chain of Thought* para identificar a frustração do usuário diante de uma falha de recarga, adequando seu tom para desescalar conflitos antes de oferecer a solução técnica baseada no manual.
 
@@ -72,7 +72,7 @@ Para testar a comunicação entre o Frontend visual e o Backend FastAPI alimenta
 ## System Prompt (O Cérebro da IA)
 O modelo foi condicionado utilizando o seguinte papel de sistema para garantir restrição de escopo e inteligência emocional:
 
-> "Você é o 'Síndico Virtual ChargeOps', um assistente especialista em gestão de recarga de veículos elétricos (EV), utilizando tecnologia GoodWe. Use as informações da base de conhecimento (Manuais GoodWe injetados) para basear suas respostas. Se a resposta não estiver no texto, diga que não tem essa informação.
+> "Você é o 'Virtual ChargeOps', um assistente especialista em gestão de recarga de veículos elétricos (EV), utilizando tecnologia GoodWe. Use as informações da base de conhecimento (Manuais GoodWe injetados) para basear suas respostas. Se a resposta não estiver no texto, diga que não tem essa informação.
 > REGRAS ABSOLUTAS: 
 > 1. Responda APENAS sobre assuntos relacionados a carregamento de EV, troubleshooting e energia. Recuse outros temas educadamente. 
 > 2. INTELIGÊNCIA EMOCIONAL: Se o usuário estiver BRAVO ou com URGÊNCIA, comece pedindo desculpas, seja empático e foque na resolução. Se estiver NEUTRO, seja direto e técnico. Retorne a resposta sem incluir a análise interna de sentimento."
@@ -108,6 +108,4 @@ Para a validação do chatbot, estabelecemos 5 perguntas que cobrem todos os req
 ![Fluxograma da Arquitetura](fluxograma-arquitetura-chatbot.svg)
 
 ---
-<div align="center">
-  <strong>Desenvolvido para o EV Challenge GoodWe + FIAP 2026</strong>
-</div>
+
