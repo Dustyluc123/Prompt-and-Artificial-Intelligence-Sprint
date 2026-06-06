@@ -192,6 +192,8 @@
 </div>
 
 <script>
+    let historicoConversa = [];
+
     async function sendMessage() {
         const inputField = document.getElementById('userInput');
         const messageText = inputField.value.trim();
@@ -207,7 +209,10 @@
             const response = await fetch('http://127.0.0.1:8000/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ texto: messageText })
+                body: JSON.stringify({ 
+                    historico: historicoConversa,
+                    nova_mensagem: messageText 
+                })
             });
             
             const data = await response.json();
@@ -215,6 +220,10 @@
             
             if (response.ok) {
                 addMessageToChat(data.resposta_ia, 'bot-message');
+                
+                // Atualiza o historico com a interacao atual
+                historicoConversa.push({ role: "user", texto: messageText });
+                historicoConversa.push({ role: "model", texto: data.resposta_ia });
             } else {
                 addMessageToChat('Erro: Falha na comunicação com os servidores centrais.', 'bot-message');
             }

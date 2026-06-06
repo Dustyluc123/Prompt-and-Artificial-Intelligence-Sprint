@@ -5,9 +5,9 @@ from google.genai import types
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List
 from dotenv import load_dotenv
 import glob
-
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -27,69 +27,72 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class MensagemUsuario(BaseModel):
+class MensagemHistorico(BaseModel):
+    role: str
     texto: str
+
+class RequisicaoChat(BaseModel):
+    historico: List[MensagemHistorico]
+    nova_mensagem: str
 
 def extrair_texto_pasta_pdfs(caminho_pasta: str) -> str:
     texto_total = ""
-    # Busca todos os arquivos com extensao .pdf dentro da pasta informada
     arquivos_pdf = glob.glob(os.path.join(caminho_pasta, "*.pdf"))
     
     if not arquivos_pdf:
-        print(f"AVISO CRITICO: Nenhum PDF encontrado na pasta '{caminho_pasta}'. A IA estara sem memoria tecnica.")
+        print(f"AVISO CRITICO: Nenhum PDF encontrado na pasta '{caminho_pasta}'.")
         return texto_total
 
-    print(f"Iniciando leitura de {len(arquivos_pdf)} arquivo(s) PDF...")
-    
     for caminho_arquivo in arquivos_pdf:
         try:
             with open(caminho_arquivo, 'rb') as arquivo:
                 leitor = PyPDF2.PdfReader(arquivo)
-                texto_arquivo = ""
                 for pagina in leitor.pages:
                     texto_extraido = pagina.extract_text()
                     if texto_extraido:
-                        texto_arquivo += texto_extraido + "\n"
-                texto_total += f"\n--- DOCUMENTO: {os.path.basename(caminho_arquivo)} ---\n" + texto_arquivo
-                print(f"[OK] Documento injetado: {os.path.basename(caminho_arquivo)}")
+                        texto_total += texto_extraido + "\n"
         except Exception as e:
-            print(f"[ERRO] Falha ao ler o arquivo {caminho_arquivo}: {e}")
+            print(f"[ERRO] Falha ao ler {caminho_arquivo}: {e}")
             
     return texto_total
 
-# Descobre onde o arquivo main.py esta salvo fisicamente
 DIRETORIO_ATUAL = os.path.dirname(os.path.abspath(__file__))
-
-# Constroi o caminho exato para a pasta PDFs voltando uma pasta de forma segura
 CAMINHO_PDFS = os.path.join(DIRETORIO_ATUAL, "..", "PDFs")
-
-# Carrega o PDF na memoria quando o servidor liga
 BASE_DE_CONHECIMENTO = extrair_texto_pasta_pdfs(CAMINHO_PDFS)
 
-def obter_resposta_sindico(mensagem: str) -> str:
+def obter_resposta_sindico(historico: List[MensagemHistorico], nova_mensagem: str) -> str:
     system_instruction = f"""
-    Você é o 'Síndico Virtual ChargeOps', um assistente especialista em gestão de recarga de veículos elétricos (EV) para condomínios, utilizando tecnologia GoodWe.
+    Você é o 'Síndico Virtual ChargeOps', assistente especialista em gestão de recarga de veículos elétricos (EV) para condomínios (GoodWe).
     
-    BASE DE CONHECIMENTO TÉCNICO E REGRAS DO CONDOMÍNIO:
-    Use as informações abaixo para basear suas respostas técnicas. Se a resposta não estiver neste texto, diga que não tem essa informação no momento.
-    --- INÍCIO DA BASE DE CONHECIMENTO ---
+    OBJETIVO: Atuar como primeira linha de suporte técnico para usuários da linha HCA, resolvendo dúvidas operacionais e evitando acionamentos técnicos desnecessários.
+    
+    BASE DE CONHECIMENTO TÉCNICO:
     {BASE_DE_CONHECIMENTO}
-    --- FIM DA BASE DE CONHECIMENTO ---
     
     REGRAS ABSOLUTAS:
-    1. Responda APENAS sobre assuntos relacionados a condomínios, carregamento de veículos elétricos e energia.
-    2. INTELIGÊNCIA EMOCIONAL (Chain of Thought): Antes de gerar a resposta final, analise o tom da mensagem do usuário.
-        - Se o usuário estiver BRAVO, FRUSTRADO ou com URGÊNCIA: Sua resposta deve começar pedindo desculpas, sendo extremamente empática, calma e focada em resolver o problema imediatamente.
-        - Se o usuário estiver NEUTRO ou buscando DADOS: Seja direto, técnico, educado e eficiente.
-        - Se o usuário estiver FELIZ ou SATISFEITO: Seja amigável e encorajador.
-    
-    Retorne a sua resposta diretamente, sem incluir a sua análise interna de sentimento.
+    1. ESCOPO: Responda APENAS sobre carregamento de EV, troubleshooting e energia condominial.
+    2. FORMATO DE SAIDA: 
+       - Para troubleshooting de hardware ou múltiplas instruções, use bullet points.
+       - Para dúvidas diretas (ex: limites de potência), use um parágrafo curto e objetivo.
+    3. ESCALADA HUMANA: Se o problema envolver risco elétrico, hardware fisicamente danificado, ou se a solução não estiver no manual, instrua: "Desligue o disjuntor imediatamente e contate o suporte técnico GoodWe."
+    4. INTELIGENCIA EMOCIONAL: Analise o tom. Se o usuário estiver BRAVO/URGENTE, comece com um pedido de desculpas empático. Se NEUTRO, vá direto ao ponto técnico.
     """
+    
+    contents = []
+    for msg in historico:
+        role_gemini = "user" if msg.role == "user" else "model"
+        contents.append(
+            types.Content(role=role_gemini, parts=[types.Part.from_text(text=msg.texto)])
+        )
+    
+    contents.append(
+        types.Content(role="user", parts=[types.Part.from_text(text=nova_mensagem)])
+    )
     
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=mensagem,
+            contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=0.2, 
@@ -98,19 +101,15 @@ def obter_resposta_sindico(mensagem: str) -> str:
         return response.text
     except Exception as e:
         print(f"Erro ao chamar Gemini: {e}")
-        return "Desculpe, estou enfrentando instabilidades no painel central. Tente novamente em instantes."
+        return "Desculpe, falha de comunicação com o servidor central."
 
 @app.post("/chat")
-async def chat_com_sindico(mensagem: MensagemUsuario):
-    if not mensagem.texto.strip():
+async def chat_com_sindico(requisicao: RequisicaoChat):
+    if not requisicao.nova_mensagem.strip():
         raise HTTPException(status_code=400, detail="A mensagem nao pode estar vazia.")
     
-    resposta = obter_resposta_sindico(mensagem.texto)
+    resposta = obter_resposta_sindico(requisicao.historico, requisicao.nova_mensagem)
     return {
         "status": "sucesso",
         "resposta_ia": resposta
     }
-
-@app.get("/")
-async def root():
-    return {"mensagem": "API do Sindico Virtual esta online e atualizada!"}
